@@ -138,7 +138,7 @@ public class GraphicsDisplay extends JPanel {
         // Шаг 8 - В нужном порядке вызвать методы отображения элементов графика
         // Порядок вызова методов имеет значение, т.к. предыдущий рисунок будет затираться последующим
         // Первыми (если нужно) отрисовываются оси координат.
-        //drawGrid(canvas);
+        drawGrid(canvas);
         if (showAxis) paintAxis(canvas);
         // Затем отображается сам график
         paintGraphics(canvas);
@@ -328,15 +328,33 @@ public class GraphicsDisplay extends JPanel {
     private void drawGrid(Graphics2D canvas) {
         canvas.setStroke(markerStroke);
         canvas.setColor(Color.LIGHT_GRAY);
-        double xStep = (xToPoint(maxX) - xToPoint(minX)) / 10;
-        double yStep = (yToPoint(maxY) - yToPoint(minY)) / 10;
+
+        double xStep = Math.abs(xToPoint(maxX) - xToPoint(minX)) / 10;
+        double yStep = Math.abs(yToPoint(maxY) - yToPoint(minY)) / 10;
 
         for (double x = xToPoint(minX); x <= xToPoint(maxX); x += xStep) {
-        //    canvas.draw(new Line2D.Double(x,yToPoint(minY), x, yToPoint(maxY)));
+            canvas.draw(new Line2D.Double(x,yToPoint(minY), x, yToPoint(maxY)));
+            double t = 0;
+            for(double xx = x; xx < x + xStep; xx += xStep / 10)
+            {
+                Point2D.Double p1 = new Point2D.Double(xx, yToPoint(0));
+                Point2D.Double p2 = shiftPoint(p1, 0, -10);
+                if(t == 5) p2 = shiftPoint(p2, 0, -5);
+                System.out.println(p1 + " " + p2);
+                canvas.draw(new Line2D.Double(p1, p2));
+                t++;
+            }
         }
-
-        for (double y = minY; y <= maxY; y += yStep) {
-
+        //System.out.println(yToPoint(min) + " " + yToPoint(maxY));
+        for (double y = yToPoint(maxY); y <= yToPoint(minY); y += yStep) {
+            canvas.draw(new Line2D.Double(xToPoint(minX),y, xToPoint(maxX), y));
+            for(double yy = y; yy < y + yStep; yy += yStep / 10)
+            {
+                Point2D.Double p1 = new Point2D.Double(xToPoint(0), yy);
+                Point2D.Double p2 = shiftPoint(p1, 10, 0);
+                System.out.println(p1 + " " + p2);
+                canvas.draw(new Line2D.Double(p1, p2));
+            }
         }
         canvas.setColor(Color.BLACK);
     }
