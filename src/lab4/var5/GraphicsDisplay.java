@@ -331,9 +331,14 @@ public class GraphicsDisplay extends JPanel {
 
         double xStep = Math.abs(xToPoint(maxX) - xToPoint(minX)) / 10;
         double yStep = Math.abs(yToPoint(maxY) - yToPoint(minY)) / 10;
-
+        double xst = (maxX - minX) / 10;
+        double x0 = minX;
+        double yst = (maxY - minY) / 10;
+        double y0 = minY;
         for (double x = xToPoint(minX); x <= xToPoint(maxX); x += xStep) {
             canvas.draw(new Line2D.Double(x,yToPoint(minY), x, yToPoint(maxY)));
+            canvas.drawString(String.format("%.3f", x0), (int) x + 1, (int)yToPoint(0) - 10);
+            x0+= xst;
             double t = 0;
             for(double xx = x; xx < x + xStep; xx += xStep / 10)
             {
@@ -348,6 +353,8 @@ public class GraphicsDisplay extends JPanel {
         //System.out.println(yToPoint(min) + " " + yToPoint(maxY));
         for (double y = yToPoint(maxY); y <= yToPoint(minY); y += yStep) {
             canvas.draw(new Line2D.Double(xToPoint(minX),y, xToPoint(maxX), y));
+            canvas.drawString(String.format("%.3f", y0), (int) xToPoint(0) + 10, (int) y + 1);
+            y0+= yst;
             for(double yy = y; yy < y + yStep; yy += yStep / 10)
             {
                 Point2D.Double p1 = new Point2D.Double(xToPoint(0), yy);
