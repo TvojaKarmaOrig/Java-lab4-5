@@ -21,11 +21,14 @@ import javax.swing.JPanel;
 public class GraphicsDisplay extends JPanel {
 
     // Список координат точек для построения графика
+    private Double[][] graphicsData1;
+    private Double[][] graphicsData90;
     private Double[][] graphicsData;
 
     // Флаговые переменные, задающие правила отображения графика
     private boolean showAxis = true;
     private boolean showMarkers = true;
+    private boolean turn90 = false;
 
     // Границы диапазона пространства, подлежащего отображению
     private double minX;
@@ -70,7 +73,16 @@ public class GraphicsDisplay extends JPanel {
     // главного окна приложения в случае успешной загрузки данных
     public void showGraphics(Double[][] graphicsData) {
         // Сохранить массив точек во внутреннем поле класса
+
+        graphicsData90 = new Double[graphicsData.length][];
+        // System.out.println("bylo");
+        for(int i = 0; i < graphicsData.length; i++)
+        {
+            graphicsData90[i] = new Double[] {-1 * graphicsData[i][1], graphicsData[i][0]};
+        }
+        graphicsData1 = graphicsData;
         this.graphicsData = graphicsData;
+
         // Запросить перерисовку компонента, т.е. неявно вызвать paintComponent()
         repaint();
     }
@@ -79,6 +91,11 @@ public class GraphicsDisplay extends JPanel {
     // Изменение любого параметра приводит к перерисовке области
     public void setShowAxis(boolean showAxis) {
         this.showAxis = showAxis;
+        repaint();
+    }
+
+    public void setTurn90(boolean turn90) {
+        this.turn90 = turn90;
         repaint();
     }
 
@@ -101,6 +118,9 @@ public class GraphicsDisplay extends JPanel {
         // Еѐ верхний левый угол это (minX, maxY) - правый нижний это (maxX, minY)
         width = getWidth();
         height = getHeight();
+
+        if(turn90) this.graphicsData = graphicsData90;
+        else  this.graphicsData = graphicsData1;
         //System.out.println(width + " " + height);
 
         minX = graphicsData[0][0];
@@ -272,10 +292,14 @@ public class GraphicsDisplay extends JPanel {
             canvas.fill(arrow); // Закрасить стрелку
             // Нарисовать подпись к оси Y
             // Определить, сколько места понадобится для надписи "y"
-            Rectangle2D bounds = axisFont.getStringBounds("y", context);
+            Rectangle2D bounds;
+            if(turn90)  bounds = axisFont.getStringBounds("x", context);
+            else  bounds = axisFont.getStringBounds("y", context);
             Point2D.Double labelPos = xyToPoint(0, maxY);
             // Вывести надпись в точке с вычисленными координатами
-            canvas.drawString("y", (float) labelPos.getX() + 10,
+            if(!turn90) canvas.drawString("y", (float) labelPos.getX() + 10,
+                    (float) (labelPos.getY() - bounds.getY()));
+            else canvas.drawString("x", (float) labelPos.getX() - 27,
                     (float) (labelPos.getY() - bounds.getY()));
         }
         // Определить, должна ли быть видна ось X на графике
@@ -286,27 +310,48 @@ public class GraphicsDisplay extends JPanel {
                     xyToPoint(maxX, 0)));
             // Стрелка оси X
             GeneralPath arrow = new GeneralPath();
-            // Установить начальную точку ломаной точно на правый конец оси X
-            Point2D.Double lineEnd = xyToPoint(maxX, 0);
-            arrow.moveTo(lineEnd.getX(), lineEnd.getY());
-            // Вести верхний "скат" стрелки в точку с относительными координатами (-20,-5)
-            arrow.lineTo(arrow.getCurrentPoint().getX() - 20,
-                    arrow.getCurrentPoint().getY() - 5);
-            // Вести левую часть стрелки в точку с относительными координатами (0, 10)
-            arrow.lineTo(arrow.getCurrentPoint().getX(),
-                    arrow.getCurrentPoint().getY() + 10);
+            Point2D.Double lineEnd;
+            if(!turn90)
+            {
+                // Установить начальную точку ломаной точно на правый конец оси X
+                lineEnd = xyToPoint(maxX, 0);
+                arrow.moveTo(lineEnd.getX(), lineEnd.getY());
+                // Вести верхний "скат" стрелки в точку с относительными координатами (-20,-5)
+                arrow.lineTo(arrow.getCurrentPoint().getX() - 20,
+                        arrow.getCurrentPoint().getY() - 5);
+                // Вести левую часть стрелки в точку с относительными координатами (0, 10)
+                arrow.lineTo(arrow.getCurrentPoint().getX(),
+                        arrow.getCurrentPoint().getY() + 10);
+            }
+            else
+            {
+                lineEnd = xyToPoint(minX, 0);
+                arrow.moveTo(lineEnd.getX(), lineEnd.getY());
+                // Вести верхний "скат" стрелки в точку с относительными координатами (-20,-5)
+                arrow.lineTo(arrow.getCurrentPoint().getX() + 20,
+                        arrow.getCurrentPoint().getY() - 5);
+                // Вести левую часть стрелки в точку с относительными координатами (0, 10)
+                arrow.lineTo(arrow.getCurrentPoint().getX(),
+                        arrow.getCurrentPoint().getY() + 10);
+            }
             // Замкнуть треугольник стрелки
             arrow.closePath();
             canvas.draw(arrow); // Нарисовать стрелку
             canvas.fill(arrow); // Закрасить стрелку
             // Нарисовать подпись к оси X
             // Определить, сколько места понадобится для надписи "x"
-            Rectangle2D bounds = axisFont.getStringBounds("x", context);
-            Point2D.Double labelPos = xyToPoint(maxX, 0);
+            Rectangle2D bounds;
+            if(turn90) bounds = axisFont.getStringBounds("y", context);
+            else bounds = axisFont.getStringBounds("x", context);
+            Point2D.Double labelPos;
+            if(!turn90)  labelPos = xyToPoint(maxX, 0);
+            else labelPos = xyToPoint(minX, 0);
             // Вывести надпись в точке с вычисленными координатами
 
-            canvas.drawString("x", (float) (labelPos.getX() -
+            if(!turn90) canvas.drawString("x", (float) (labelPos.getX() -
                     bounds.getWidth() - 10), (float) (labelPos.getY() + bounds.getY()));
+            else canvas.drawString("y", (float) (labelPos.getX() -
+                    bounds.getWidth() + 10), (float) (labelPos.getY() + bounds.getY()));
 
         }
     }
@@ -345,7 +390,7 @@ public class GraphicsDisplay extends JPanel {
                 Point2D.Double p1 = new Point2D.Double(xx, yToPoint(0));
                 Point2D.Double p2 = shiftPoint(p1, 0, -10);
                 if(t == 5) p2 = shiftPoint(p2, 0, -5);
-                System.out.println(p1 + " " + p2);
+                //System.out.println(p1 + " " + p2);
                 canvas.draw(new Line2D.Double(p1, p2));
                 t++;
             }
@@ -359,7 +404,7 @@ public class GraphicsDisplay extends JPanel {
             {
                 Point2D.Double p1 = new Point2D.Double(xToPoint(0), yy);
                 Point2D.Double p2 = shiftPoint(p1, 10, 0);
-                System.out.println(p1 + " " + p2);
+                //System.out.println(p1 + " " + p2);
                 canvas.draw(new Line2D.Double(p1, p2));
             }
         }

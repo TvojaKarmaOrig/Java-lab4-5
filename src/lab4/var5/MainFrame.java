@@ -30,6 +30,7 @@ public class MainFrame extends JFrame {
     // Пункты меню
     private JCheckBoxMenuItem showAxisMenuItem;
     private JCheckBoxMenuItem showMarkersMenuItem;
+    private JCheckBoxMenuItem turn90MenuItem;
 
     // Компонент-отображатель графика
     private GraphicsDisplay display;
@@ -90,8 +91,6 @@ showAxisMenuItem = new JCheckBoxMenuItem(showAxisAction);
 // Повторить действия для элемента "Показывать маркеры точек"
 Action showMarkersAction = new AbstractAction("Показывать маркеры точек") {
 public void actionPerformed(ActionEvent event) {
-    // по аналогии с showAxisMenuItem
-
     display.setShowMarkers(showMarkersMenuItem.isSelected());
 }
   };
@@ -100,7 +99,16 @@ showMarkersMenuItem = new JCheckBoxMenuItem(showMarkersAction);
 // Элемент по умолчанию включен (отмечен флажком)
   showMarkersMenuItem.setSelected(true);
 // Зарегистрировать обработчик событий, связанных с меню "График"
-  graphicsMenu.addMenuListener(new GraphicsMenuListener());
+
+    Action turn90Action = new AbstractAction("Поворот на 90 градусов") {
+        public void actionPerformed(ActionEvent event) {
+            display.setTurn90(turn90MenuItem.isSelected());
+        }
+    };
+    turn90MenuItem = new JCheckBoxMenuItem(turn90Action);
+    turn90MenuItem.setSelected(false);
+    graphicsMenu.add(turn90MenuItem);
+    graphicsMenu.addMenuListener(new GraphicsMenuListener());
 
 // Установить GraphicsDisplay в цент граничной компоновки
 getContentPane().add(display, BorderLayout.CENTER);
@@ -190,6 +198,7 @@ private class GraphicsMenuListener implements MenuListener {
         // Доступность или недоступность элементов меню "График" определяется загруженностью данных
         showAxisMenuItem.setEnabled(fileLoaded);
         showMarkersMenuItem.setEnabled(fileLoaded);
+        turn90MenuItem.setEnabled(fileLoaded);
     }
 
     // Обработчик, вызываемый после того, как меню исчезло с экрана
