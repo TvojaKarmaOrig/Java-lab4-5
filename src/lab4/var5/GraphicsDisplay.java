@@ -50,6 +50,9 @@ public class GraphicsDisplay extends JPanel {
     private Point2D.Double selectionStart;
     private Point2D.Double selectionEnd;
     private boolean selecting;
+    private boolean isTracked = false;
+
+    private int draggedPointIndex; // Индекс перетаскиваемой точки
 
     // Используемый масштаб отображения
     private double scaleX;
@@ -94,6 +97,7 @@ public class GraphicsDisplay extends JPanel {
             }
             @Override
             public void mouseDragged(MouseEvent e) {
+                handleMouseMoved(e);
                 if (selecting) {
                     selectionEnd = new Point2D.Double(e.getPoint().getX(), e.getPoint().getY());
                     repaint();
@@ -104,9 +108,13 @@ public class GraphicsDisplay extends JPanel {
             @Override
             public void mousePressed(MouseEvent e) {
                 if (e.getButton() == MouseEvent.BUTTON1) {
-                    selectionStart = new Point2D.Double(e.getPoint().getX(), e.getPoint().getY());
-                    selectionEnd = null;
-                    selecting = true;
+                    handleMousePressed(e);
+                    if(!isTracked)
+                    {
+                        selectionStart = new Point2D.Double(e.getPoint().getX(), e.getPoint().getY());
+                        selectionEnd = null;
+                        selecting = true;
+                    }
                 } else if (e.getButton() == MouseEvent.BUTTON3) {
                     resetZoom();
                 }
@@ -117,6 +125,10 @@ public class GraphicsDisplay extends JPanel {
             public void mouseReleased(MouseEvent e) {
                 if (selecting && selectionStart != null && selectionEnd != null) {
                     zoomToSelection();
+                }
+                if(e.getButton() == MouseEvent.BUTTON1)
+                {
+                    handleMouseReleased(e);
                 }
                 selecting = false;
                 selectionStart = null;
@@ -220,7 +232,7 @@ public class GraphicsDisplay extends JPanel {
         // Затем (если нужно) отображаются маркеры точек, по которым строился график.
         if (showMarkers) paintMarkers(canvas);
 
-        if (highlightedPoint != null && highlightedCoords != null) {
+        if (highlightedPoint != null && highlightedCoords != null && !isTracked) {
             canvas.setColor(Color.RED);
             canvas.fillOval((int) highlightedPoint.x - 5, (int) highlightedPoint.y - 5, 10, 10);
             canvas.setColor(Color.BLACK);
@@ -433,6 +445,13 @@ public class GraphicsDisplay extends JPanel {
         double y1 = (double)height - 8.0 - ((y -  minY) * scaleY);
         return new Point2D.Double(x1, y1);
     }
+
+    protected Point2D.Double pointToxy(int x, int y) {
+        double x1 = ((x - 8.0) / scaleX) + minX;
+        double y1 = ((y - (double) height + 8.0) / scaleY) * -1 + minY;
+        return new Point2D.Double(x1, y1);
+    }
+
     protected double xToPoint(double x) {
         double x1 = 8.0 + ((x - minX) * scaleX);
         return  x1;
@@ -452,8 +471,8 @@ public class GraphicsDisplay extends JPanel {
         double x0 = minX;
         double yst = (maxY - minY) / 10;
         double y0 = maxY;
-        int orderx = (int) Math.abs(Math.floor(Math.log10(Math.abs(x0)))) + 3;
-        int ordery = (int) Math.abs(Math.floor(Math.log10(Math.abs(y0)))) + 3;
+        int orderx = (int) Math.abs(Math.floor(Math.log10(Math.abs(minX)))) + 1;
+        int ordery = (int) Math.abs(Math.floor(Math.log10(Math.abs(minY)))) + 1;
         String strx = "%." + Integer.toString(orderx) + "f";
         String stry = "%." + Integer.toString(ordery) + "f";
         for (double x = xToPoint(minX); x <= xToPoint(maxX); x += xStep) {
@@ -504,16 +523,64 @@ public class GraphicsDisplay extends JPanel {
         int mouseY = e.getY();
         highlightedPoint = null;
         highlightedCoords = null;
+        int orderx = (int) Math.abs(Math.floor(Math.log10(Math.abs(minX)))) + 1;
+        int ordery = (int) Math.abs(Math.floor(Math.log10(Math.abs(maxY)))) + 1;
+        String strx = "%." + Integer.toString(orderx) + "f";
+        String stry = "%." + Integer.toString(ordery) + "f";
+        String str = "(" + strx + ", " + stry + ")";
+        if(isTracked)
+        {
+            graphicsData[draggedPointIndex][0] =  pointToxy(mouseX, mouseY).getX();
+            graphicsData[draggedPointIndex][1] = pointToxy(mouseX, mouseY).getY();
+            repaint();
+            return;
+        }
 
         for (int i = 0; i < graphicsData.length; i++) {
             Point2D.Double p = xyToPoint(graphicsData[i][0], graphicsData[i][1]);
             if (Math.abs(mouseX - p.getX()) < 10 && Math.abs(mouseY - p.getY()) < 10) {
                 highlightedPoint = p;
-                highlightedCoords = String.format("(%.2f, %.2f)", graphicsData[i][0], graphicsData[i][1]);
+                highlightedCoords = String.format(str, graphicsData[i][0], graphicsData[i][1]);
                 break;
             }
         }
 
+        repaint();
+    }
+
+    private void handleMousePressed(MouseEvent e) {
+        if (graphicsData == null || graphicsData.length == 0) {
+            return;
+        }
+        int mouseX = e.getX();
+        int mouseY = e.getY();
+
+        for (int i = 0; i < graphicsData.length; i++) {
+            Point2D.Double p = xyToPoint(graphicsData[i][0], graphicsData[i][1]);
+            if (Math.abs(mouseX - p.getX()) < 10 && Math.abs(mouseY - p.getY()) < 10) {
+                draggedPointIndex = i;
+                isTracked = true;
+                break;
+            }
+        }
+
+        repaint();
+    }
+
+    private void handleMouseReleased(MouseEvent e) {
+        if (graphicsData.length == 0) {
+            return;
+        }
+        int mouseX = e.getX();
+        int mouseY = e.getY();
+
+        if(isTracked)
+        {
+            graphicsData[draggedPointIndex][0] = pointToxy(mouseX, mouseY).getX();
+            graphicsData[draggedPointIndex][1] = pointToxy(mouseX, mouseY).getY();
+            isTracked = false;
+            highlightedPoint = pointToxy(mouseX, mouseY);
+        }
         repaint();
     }
 
