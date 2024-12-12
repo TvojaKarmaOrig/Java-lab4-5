@@ -7,6 +7,7 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Paint;
 import java.awt.Stroke;
+import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.awt.font.FontRenderContext;
@@ -44,6 +45,10 @@ public class GraphicsDisplay extends JPanel {
     private Point2D.Double highlightedPoint;
     private String highlightedCoords;
 
+    private Point2D.Double selectionStart;
+    private Point2D.Double selectionEnd;
+    private boolean selecting;
+
     // Используемый масштаб отображения
     private double scaleX;
     private double scaleY;
@@ -60,6 +65,9 @@ public class GraphicsDisplay extends JPanel {
     public GraphicsDisplay() {
         // Цвет заднего фона области отображения - белый
         setBackground(Color.WHITE);
+        this.selectionStart = null;
+        this.selectionEnd = null;
+        this.selecting = false;
         // Сконструировать необходимые объекты, используемые в рисовании
         // Перо для рисования графика
         float[] dashPattern = {16, 4, 4, 4, 8, 4, 4, 4};
@@ -80,6 +88,33 @@ public class GraphicsDisplay extends JPanel {
             public void mouseMoved(MouseEvent e) {
                 if(graphicsData != null) handleMouseMoved(e);
             }
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                if (selecting) {
+                    selectionEnd = new Point2D.Double(e.getPoint().getX(), e.getPoint().getY());
+                    repaint();
+                }
+            }
+        });
+        addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                selectionStart = new Point2D.Double(e.getPoint().getX(), e.getPoint().getY());
+                selectionEnd = null;
+                selecting = true;
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                System.out.println("a?");
+                if (selecting && selectionStart != null && selectionEnd != null) {
+                    zoomToSelection();
+                }
+                selecting = false;
+                selectionStart = null;
+                selectionEnd = null;
+                repaint();
+            }
         });
     }
 
@@ -97,6 +132,26 @@ public class GraphicsDisplay extends JPanel {
         graphicsData1 = graphicsData;
         this.graphicsData = graphicsData;
 
+        minX = graphicsData[0][0];
+        maxX = graphicsData[0][0];
+        minY = graphicsData[0][1];
+        maxY = graphicsData[0][1];
+
+        // Найти минимальное и максимальное значение функции
+        for (int i = 1; i < graphicsData.length; i++) {
+            if (graphicsData[i][1] < minY) {
+                minY = graphicsData[i][1];
+            }
+            if (graphicsData[i][1] > maxY) {
+                maxY = graphicsData[i][1];
+            }
+            if (graphicsData[i][0] < minX) {
+                minX = graphicsData[i][0];
+            }
+            if (graphicsData[i][0] > maxX) {
+                maxX = graphicsData[i][0];
+            }
+        }
         // Запросить перерисовку компонента, т.е. неявно вызвать paintComponent()
         repaint();
     }
@@ -136,26 +191,6 @@ public class GraphicsDisplay extends JPanel {
         if(turn90) this.graphicsData = graphicsData90;
         else  this.graphicsData = graphicsData1;
         //System.out.println(width + " " + height);
-
-        minX = graphicsData[0][0];
-        maxX = graphicsData[0][0];
-        minY = graphicsData[0][1];
-        maxY = graphicsData[0][1];
-        // Найти минимальное и максимальное значение функции
-        for (int i = 1; i < graphicsData.length; i++) {
-            if (graphicsData[i][1] < minY) {
-                minY = graphicsData[i][1];
-            }
-            if (graphicsData[i][1] > maxY) {
-                maxY = graphicsData[i][1];
-            }
-            if (graphicsData[i][0] < minX) {
-                minX = graphicsData[i][0];
-            }
-            if (graphicsData[i][0] > maxX) {
-                maxX = graphicsData[i][0];
-            }
-        }
         //System.out.println(minX + " " + maxX + " " + minY + " " + maxY);
   /* Шаг 4 - Определить (исходя из размеров окна) масштабы по осям X
 и Y - сколько пикселов
@@ -185,6 +220,16 @@ public class GraphicsDisplay extends JPanel {
             canvas.setColor(Color.BLACK);
             canvas.setFont(numsFont);
             canvas.drawString(highlightedCoords, (int) highlightedPoint.x + 10, (int) highlightedPoint.y - 10);
+        }
+
+        if (selectionStart != null && selectionEnd != null) {
+            canvas.setColor(Color.DARK_GRAY);
+            canvas.setStroke(new BasicStroke(1, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0, new float[]{5}, 0));
+            int x = (int) Math.min(selectionStart.x, selectionEnd.x);
+            int y = (int)Math.min(selectionStart.y, selectionEnd.y);
+            int widthRect = (int)Math.abs(selectionStart.x - selectionEnd.x);
+            int heightRect = (int)Math.abs(selectionStart.y - selectionEnd.y);
+            canvas.drawRect(x, y, widthRect, heightRect);
         }
 
         // Шаг 9 - Восстановить старые настройки холста
@@ -461,4 +506,34 @@ public class GraphicsDisplay extends JPanel {
 
         repaint();
     }
+
+    private void zoomToSelection() {
+        if (selectionStart == null || selectionEnd == null) {
+            return;
+        }
+
+        int x1 = (int) Math.min(selectionStart.x, selectionEnd.x);
+        int y1 = (int) Math.min(selectionStart.y, selectionEnd.y);
+        int x2 = (int) Math.max(selectionStart.x, selectionEnd.x);
+        int y2 = (int) Math.max(selectionStart.y, selectionEnd.y);
+
+        double newMinX = minX + (x1 - 8) / scaleX;
+        double newMaxX = minX + (x2 - 8) / scaleX;
+        double newMinY = minY + (height - 8 - y2) / scaleY;
+        double newMaxY = minY + (height - 8 - y1) / scaleY;
+
+        System.out.println(minX + " " + newMinX);
+        System.out.println(maxX + " " + newMaxX);
+        System.out.println(minY + " " + newMinY);
+        System.out.println(maxY + " " + newMaxY);
+
+        minX = newMinX;
+        maxX = newMaxX;
+        minY = newMinY;
+        maxY = newMaxY;
+
+
+        repaint();
+    }
+
 }
