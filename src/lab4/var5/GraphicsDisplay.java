@@ -7,6 +7,8 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Paint;
 import java.awt.Stroke;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
 import java.awt.font.FontRenderContext;
 //import java.awt.geom.Ellipse2D;
 import java.awt.geom.GeneralPath;
@@ -39,6 +41,9 @@ public class GraphicsDisplay extends JPanel {
     int height;
     int width;
 
+    private Point2D.Double highlightedPoint;
+    private String highlightedCoords;
+
     // Используемый масштаб отображения
     private double scaleX;
     private double scaleY;
@@ -50,6 +55,7 @@ public class GraphicsDisplay extends JPanel {
 
     // Различные шрифты отображения надписей
     private Font axisFont;
+    private Font numsFont;
 
     public GraphicsDisplay() {
         // Цвет заднего фона области отображения - белый
@@ -67,6 +73,14 @@ public class GraphicsDisplay extends JPanel {
                 BasicStroke.JOIN_MITER, 10.0f, null, 0.0f);
         // Шрифт для подписей осей координат
         axisFont = new Font("Serif", Font.BOLD, 36);
+        numsFont = new Font("Serif", Font.BOLD,  15);
+
+        addMouseMotionListener(new MouseMotionAdapter() {
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                if(graphicsData != null) handleMouseMoved(e);
+            }
+        });
     }
 
     // Данный метод вызывается из обработчика элемента меню "Открыть файл с графиком"
@@ -164,7 +178,14 @@ public class GraphicsDisplay extends JPanel {
         paintGraphics(canvas);
         // Затем (если нужно) отображаются маркеры точек, по которым строился график.
         if (showMarkers) paintMarkers(canvas);
-        //drawNumbs();
+
+        if (highlightedPoint != null && highlightedCoords != null) {
+            canvas.setColor(Color.RED);
+            canvas.fillOval((int) highlightedPoint.x - 5, (int) highlightedPoint.y - 5, 10, 10);
+            canvas.setColor(Color.BLACK);
+            canvas.setFont(numsFont);
+            canvas.drawString(highlightedCoords, (int) highlightedPoint.x + 10, (int) highlightedPoint.y - 10);
+        }
 
         // Шаг 9 - Восстановить старые настройки холста
         canvas.setFont(oldFont);
@@ -417,5 +438,27 @@ public class GraphicsDisplay extends JPanel {
         // Задать еѐ координаты как координаты существующей точки + заданные смещения
         dest.setLocation(src.getX() + deltaX, src.getY() + deltaY);
         return dest;
+    }
+
+    private void handleMouseMoved(MouseEvent e) {
+        if (graphicsData.length == 0) {
+            return;
+        }
+
+        int mouseX = e.getX();
+        int mouseY = e.getY();
+        highlightedPoint = null;
+        highlightedCoords = null;
+
+        for (int i = 0; i < graphicsData.length; i++) {
+            Point2D.Double p = xyToPoint(graphicsData[i][0], graphicsData[i][1]);
+            if (Math.abs(mouseX - p.getX()) < 10 && Math.abs(mouseY - p.getY()) < 10) {
+                highlightedPoint = p;
+                highlightedCoords = String.format("(%.2f, %.2f)", graphicsData[i][0], graphicsData[i][1]);
+                break;
+            }
+        }
+
+        repaint();
     }
 }
