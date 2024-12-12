@@ -17,7 +17,9 @@ import java.awt.geom.Line2D;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.io.Console;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Stack;
 import javax.swing.JPanel;
 
 @SuppressWarnings("serial")
@@ -62,6 +64,8 @@ public class GraphicsDisplay extends JPanel {
     private Font axisFont;
     private Font numsFont;
 
+    private Stack<Double[]> memoryStack = new Stack<>();
+
     public GraphicsDisplay() {
         // Цвет заднего фона области отображения - белый
         setBackground(Color.WHITE);
@@ -99,14 +103,18 @@ public class GraphicsDisplay extends JPanel {
         addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
-                selectionStart = new Point2D.Double(e.getPoint().getX(), e.getPoint().getY());
-                selectionEnd = null;
-                selecting = true;
+                if (e.getButton() == MouseEvent.BUTTON1) {
+                    selectionStart = new Point2D.Double(e.getPoint().getX(), e.getPoint().getY());
+                    selectionEnd = null;
+                    selecting = true;
+                } else if (e.getButton() == MouseEvent.BUTTON3) {
+                    resetZoom();
+                }
+
             }
 
             @Override
             public void mouseReleased(MouseEvent e) {
-                System.out.println("a?");
                 if (selecting && selectionStart != null && selectionEnd != null) {
                     zoomToSelection();
                 }
@@ -124,7 +132,6 @@ public class GraphicsDisplay extends JPanel {
         // Сохранить массив точек во внутреннем поле класса
 
         graphicsData90 = new Double[graphicsData.length][];
-        // System.out.println("bylo");
         for(int i = 0; i < graphicsData.length; i++)
         {
             graphicsData90[i] = new Double[] {-1 * graphicsData[i][1], graphicsData[i][0]};
@@ -190,8 +197,7 @@ public class GraphicsDisplay extends JPanel {
 
         if(turn90) this.graphicsData = graphicsData90;
         else  this.graphicsData = graphicsData1;
-        //System.out.println(width + " " + height);
-        //System.out.println(minX + " " + maxX + " " + minY + " " + maxY);
+
   /* Шаг 4 - Определить (исходя из размеров окна) масштабы по осям X
 и Y - сколько пикселов
    * приходится на единицу длины по X и по Y
@@ -258,7 +264,7 @@ public class GraphicsDisplay extends JPanel {
             // Преобразовать значения (x,y) в точку на экране point
             Point2D.Double point = xyToPoint(graphicsData[i][0],
                     graphicsData[i][1]);
-            //System.out.println(point.getX() + " "  + point.getY());
+
 
             if (i > 0) {
                 // Не первая итерация цикла - вести линию в точку point
@@ -460,12 +466,12 @@ public class GraphicsDisplay extends JPanel {
                 Point2D.Double p1 = new Point2D.Double(xx, yToPoint(0));
                 Point2D.Double p2 = shiftPoint(p1, 0, -10);
                 if(t == 5) p2 = shiftPoint(p2, 0, -5);
-                //System.out.println(p1 + " " + p2);
+
                 canvas.draw(new Line2D.Double(p1, p2));
                 t++;
             }
         }
-        //System.out.println(yToPoint(min) + " " + yToPoint(maxY));
+
         for (double y = yToPoint(maxY); y <= yToPoint(minY); y += yStep) {
             canvas.draw(new Line2D.Double(xToPoint(minX),y, xToPoint(maxX), y));
             canvas.drawString(String.format(stry, y0), (int) xToPoint(0) + 10, (int) y + 1);
@@ -474,7 +480,7 @@ public class GraphicsDisplay extends JPanel {
             {
                 Point2D.Double p1 = new Point2D.Double(xToPoint(0), yy);
                 Point2D.Double p2 = shiftPoint(p1, 10, 0);
-                //System.out.println(p1 + " " + p2);
+
                 canvas.draw(new Line2D.Double(p1, p2));
             }
         }
@@ -526,10 +532,10 @@ public class GraphicsDisplay extends JPanel {
         double newMinY = minY + (height - 8 - y2) / scaleY;
         double newMaxY = minY + (height - 8 - y1) / scaleY;
 
-        System.out.println(minX + " " + newMinX);
-        System.out.println(maxX + " " + newMaxX);
-        System.out.println(minY + " " + newMinY);
-        System.out.println(maxY + " " + newMaxY);
+        Double[] temp = new Double[4];
+        temp[0] = minX; temp[1] = maxX;
+        temp[2] = minY; temp[3] = maxY;
+        memoryStack.add(temp);
 
         minX = newMinX;
         maxX = newMaxX;
@@ -537,6 +543,19 @@ public class GraphicsDisplay extends JPanel {
         maxY = newMaxY;
 
 
+        repaint();
+    }
+
+    private void resetZoom() {
+        if (memoryStack.isEmpty()) {
+            return;
+        }
+        Double[] temp = memoryStack.peek();
+        minX = temp[0];
+        maxX = temp[1];
+        minY = temp[2];
+        maxY = temp[3];
+        memoryStack.pop();
         repaint();
     }
 
