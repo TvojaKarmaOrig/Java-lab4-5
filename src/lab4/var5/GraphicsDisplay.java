@@ -400,7 +400,7 @@ public class GraphicsDisplay extends JPanel {
         double xst = (maxX - minX) / 10;
         double x0 = minX;
         double yst = (maxY - minY) / 10;
-        double y0 = minY;
+        double y0 = maxY;
         for (double x = xToPoint(minX); x <= xToPoint(maxX); x += xStep) {
             canvas.draw(new Line2D.Double(x,yToPoint(minY), x, yToPoint(maxY)));
             canvas.drawString(String.format("%.3f", x0), (int) x + 1, (int)yToPoint(0) - 10);
@@ -420,7 +420,7 @@ public class GraphicsDisplay extends JPanel {
         for (double y = yToPoint(maxY); y <= yToPoint(minY); y += yStep) {
             canvas.draw(new Line2D.Double(xToPoint(minX),y, xToPoint(maxX), y));
             canvas.drawString(String.format("%.3f", y0), (int) xToPoint(0) + 10, (int) y + 1);
-            y0+= yst;
+            y0-= yst;
             for(double yy = y; yy < y + yStep; yy += yStep / 10)
             {
                 Point2D.Double p1 = new Point2D.Double(xToPoint(0), yy);
